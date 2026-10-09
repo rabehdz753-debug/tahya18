@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>غرفة التواصل المشترك الفوري</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: #e5ddd5; display: flex; flex-direction: column; height: 100vh; }
+        .chat-header { background: #075e54; color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .user-tag { background: #128c7e; color: white; font-size: 12px; padding: 3px 10px; border-radius: 10px; margin-top: 5px; display: inline-block; }
+        .chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        
+        /* تصميم فقاعات الرسائل المتطورة */
+        .msg { max-width: 75%; padding: 10px 14px; border-radius: 12px; font-size: 15px; line-height: 1.4; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        .msg.me { background: #d9fdd3; color: #111b21; align-self: flex-start; border-top-right-radius: 0px; }
+        .msg.other { background: #ffffff; color: #111b21; align-self: flex-end; border-top-left-radius: 0px; }
+        
+        .msg-meta { display: block; font-size: 10px; margin-top: 4px; opacity: 0.6; text-align: left; }
+        .msg-sender { font-weight: bold; display: block; margin-bottom: 2px; font-size: 12px; color: #075e54; }
+        .input-area { background: #f0f0f0; padding: 12px; display: flex; gap: 10px; }
+        .input-area input { flex: 1; padding: 12px; border: 1px solid #fff; border-radius: 20px; outline: none; font-size: 15px; }
+        .input-area input:focus { border-color: #075e54; }
+        .input-area button { background: #075e54; color: white; border: none; padding: 0 22px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+        .input-area button:disabled { background: #b3c6c4; }
+    </style>
+</head>
+<body>
+
+    <div class="chat-header">
+        <div>💬 غرفة المحادثة السحابية المشتركة</div>
+        جاري التعرف على الهاتف...</div>
+    </div>
+
+    <div class="chat-box" id="chatBox">جاري الاتصال بقاعدة البيانات...</div>
+
+    <form class="input-area" id="messageForm">
+        <input type="text" id="msgInput" placeholder="اكتب رسالتك هنا..." required autocomplete="off">
+        <button type="submit" id="sendBtn">إرسال</button>
+    </form>
+
+<script>
+    // معرف سحابي عام ومفتوح ومحدث مخصص لمحادثتكما الفورية عبر الإنترنت
+    const BOX_ID = "b68903c74ff3666d9cba"; 
+
+    const chatBox = document.getElementById("chatBox");
+    const messageForm = document.getElementById("messageForm");
+    const msgInput = document.getElementById("msgInput");
+    const identityTag = document.getElementById("identityTag");
+    const sendBtn = document.getElementById("sendBtn");
+
+    // 1. تحديد هوية الهاتف لمرة واحدة للأبد بدون تسجيل دخول
+    let myIdentity = localStorage.getItem('chat_user_role');
+    if (!myIdentity) {
+        let choice = prompt("مرحباً بك في التطبيق المشترك!\nيرجى تحديد هويتك لمرة واحدة فقط (اكتب 1 أو 2):\n\n1 - رأبح\n2 - الأستاذ");
+        if (choice === "1") {
+            myIdentity = "rabah";
+        } else {
+            myIdentity = "teacher";
+        }
+        localStorage.setItem('chat_user_role', myIdentity);
+    }
+
+    // عرض اسم صاحب الهاتف في الأعلى للتأكيد
+    identityTag.innerText = myIdentity === "rabah" ? "الحساب النشط: رأبح" : "الحساب النشط: الأستاذ";
+
+    // 2. دالة جلب وتحديث الرسائل من السيرفر عبر الإنترنت
+    async function fetchChat() {
+        try {
+            const res = await fetch(`https://npoint.io{BOX_ID}`);
+            if (!res.ok) throw new Error();
+            const messages = await res.json();
+            
+            if (Array.isArray(messages)) {
+                chatBox.innerHTML = messages.length === 0 ? "<p style='text-align:center;color:#888;margin-top:20px;'>لا توجد رسائل سابقة. ابدأ المحادثة الآن!</p>" : "";
+                messages.forEach(msg => {
+                    // إذا كان مرسل الرسالة هو نفس هوية الهاتف تظهر باللون الأخضر، وإذا كان الطرف الآخر تظهر بالأبيض
+                    const isMe = msg.sender === myIdentity;
+                    const cardClass = isMe ? 'me' : 'other';
+                    const senderName = msg.sender === 'rabah' ? 'رأبح' : 'الأستاذ';
+                    
+                    chatBox.innerHTML += `
+                        <div class="msg ${cardClass}">
+                            <span class="msg-sender">${senderName}</span>
+                            ${msg.text}
+                            <span class="msg-meta">${msg.time}</span>
+                        </div>`;
+                });
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        } catch (e) {
+            chatBox.innerHTML = "<p style='text-align:center;color:#666;margin-top:20px;'>مستعد لاستقبال الرسائل الحية عبر الشبكة...</p>";
+        }
+    }
+
+    // 3. دالة إرسال وحفظ الرسالة الجديدة سحابياً
+    messageForm.addEventListener("submit", async function(e) {
+        e.preventDefault();
+        const text = msgInput.value.trim();
+        if (!text) return;
+
+        sendBtn.disabled = true;
+        
+        const newMsg = {
+            sender: myIdentity,
+            text: text,
+            time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
+        };
+
+        try {
+            let currentChat = [];
+            const getRes = await fetch(`https://npoint.io{BOX_ID}`);
+            if (getRes.ok) { 
+                currentChat = await getRes.json();
+                if(!Array.isArray(currentChat)) currentChat = []; 
+            }
+
+            currentChat.push(newMsg);
+
+            await fetch(`https://npoint.io{BOX_ID}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(currentChat)
+            });
+
+            msgInput.value = "";
+            fetchChat();
+        } catch (err) {
+            alert("تعذر الإرسال. يرجى التحقق من اتصال الإنترنت لديك.");
+        } finally {
+            sendBtn.disabled = false;
+        }
+    });
+
+    // تشغيل التحديث التلقائي المستمر كل 3 ثوانٍ لمزامنة الهواتف المختلفة
+    fetchChat();
+    setInterval(fetchChat, 3000);
+</script>
+</body>
+</html>
